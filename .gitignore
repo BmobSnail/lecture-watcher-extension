@@ -1,0 +1,22 @@
+# lecture-watcher
+
+## 忽略文件
+src/
+assets/
+
+## 系统文件
+.DS_Store
+Thumbs.db
+*.log
+
+## 编辑器
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+## 压缩包
+*.zip
+*.tar
+*.tar.gz
