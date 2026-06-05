@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { box-sizing: border-box; }
+    body { width: 420px; padding: 14px 14px 8px; font-family: system-ui, sans-serif; font-size: 13px; color: #333; }
+    h3 { margin: 0 0 8px; font-size: 14px; font-weight: 600; }
+    p.hint { margin: 0 0 10px; color: #888; font-size: 12px; line-height: 1.5; }
+    hr { border: none; border-top: 1px solid #eee; margin: 14px 0; }
+
+    .field { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+    .field label { width: 70px; flex-shrink: 0; color: #555; }
+    .field input, .field select { flex: 1; padding: 5px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 12px; background: white; }
+    .field input:focus, .field select:focus { outline: none; border-color: #1a73e8; }
+    .btn-save { padding: 5px 14px; background: #1a73e8; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; }
+    .btn-save:hover { background: #1558b0; }
+    .btn-test { padding: 5px 14px; background: #fff; color: #1a73e8; border: 1px solid #1a73e8; border-radius: 4px; cursor: pointer; font-size: 12px; }
+    .btn-test:hover { background: #e8f0fe; }
+    .btn-test:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-row { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-top: 4px; }
+    .test-result { font-size: 12px; margin-top: 4px; min-height: 16px; line-height: 1.5; word-break: break-all; }
+    .test-result.success { color: #188038; }
+    .test-result.error { color: #d93025; }
+    .test-result.info { color: #555; }
+
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; padding: 5px 8px; background: #f5f5f5; font-weight: 600; color: #555; }
+    td { padding: 5px 8px; border-bottom: 1px solid #eee; vertical-align: middle; }
+    td.indicator { max-width: 200px; word-break: break-all; }
+    .del { color: #d93025; cursor: pointer; border: none; background: none; font-size: 16px; line-height: 1; padding: 0 4px; }
+    .del:hover { opacity: 0.7; }
+    .add-row { display: flex; gap: 6px; margin-top: 10px; }
+    .add-row input { flex: 1; padding: 5px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 12px; }
+    .add-row input:focus { outline: none; border-color: #1a73e8; }
+    #inp-button { max-width: 90px; }
+    .add-row button { padding: 5px 12px; background: #1a73e8; color: white; border: none; border-radius: 4px; cursor: pointer; white-space: nowrap; }
+    .add-row button:hover { background: #1558b0; }
+    .saved { color: #188038; font-size: 12px; margin-top: 4px; height: 14px; }
+    .empty { color: #aaa; font-size: 12px; padding: 8px; text-align: center; }
+
+    .tip-section { text-align: center; margin-top: 6px; }
+    .tip-section p { margin: 0 0 8px; color: #f59e0b; font-size: 13px; font-weight: 500; }
+    .tip-qr-row { display: flex; justify-content: center; gap: 16px; }
+    .tip-qr-item { display: flex; flex-direction: column; align-items: center; }
+    .tip-qr-item img { width: 140px; height: 140px; object-fit: cover; border-radius: 8px; border: 1px solid #e5e7eb; background: #fff; }
+  </style>
+</head>
+<body>
+
+  <!-- Agent 配置 -->
+  <h3>🤖 Agent 配置</h3>
+  <p class="hint">遇到任务/测验等未知页面时，自动截图给 AI 判断下一步操作。</p>
+  <div class="field">
+    <label>Base URL</label>
+    <input id="ai-url"   type="text"     placeholder="https://tokhub.ai" />
+  </div>
+  <div class="field">
+    <label>API Key</label>
+    <input id="ai-key"   type="password" placeholder="sk-..." />
+  </div>
+  <div class="field">
+    <label>Model</label>
+    <input id="ai-model" type="text" placeholder="qwen3.6-flash" />
+  </div>
+  <div class="btn-row">
+    <button class="btn-test" id="btn-test-ai">测试</button>
+    <button class="btn-save" id="btn-save-ai">保存</button>
+  </div>
+  <div class="test-result" id="test-result"></div>
+
+  <hr>
+
+  <!-- 防挂机策略 -->
+  <h3>🛡️ 防挂机策略</h3>
+  <p class="hint">检测到页面包含「特征文字」时，自动点击「按钮」关闭弹窗。纯脚本规则匹配，无需 Agent 参与。</p>
+  <div class="field">
+    <label>轮询间隔</label>
+    <select id="ai-interval">
+      <option value="10">10 秒</option>
+      <option value="20" selected>20 秒（默认）</option>
+      <option value="30">30 秒</option>
+      <option value="60">1 分钟</option>
+      <option value="120">2 分钟</option>
+      <option value="300">5 分钟</option>
+    </select>
+  </div>
+  <table>
+    <thead>
+      <tr><th>检测特征文字</th><th>点击按钮</th><th></th></tr>
+    </thead>
+    <tbody id="rules-body"></tbody>
+  </table>
+  <div class="add-row">
+    <input id="inp-indicator" placeholder="弹窗特征文字（部分匹配）" />
+    <input id="inp-button"    placeholder="按钮文字" />
+    <button id="btn-add">添加</button>
+  </div>
+
+  <hr>
+
+  <!-- 代课助手 -->
+  <h3 style="margin:0 0 8px;">📡 代课助手</h3>
+  <p class="hint">开启后，插件将代你值守当前标签页，自动推进课程学习。监控绑定的是标签页本身，而非页面 URL——课程切换导致 URL 变化不影响监控。</p>
+  <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+    <p id="monitor-url" class="hint" style="margin:0; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></p>
+    <button id="btn-toggle" class="btn-save" style="flex-shrink:0; min-width:72px;">开始</button>
+  </div>
+
+  <hr>
+
+  <!-- 打赏 -->
+  <div class="tip-section">
+    <p> 请我喝杯咖啡</p>
+    <div class="tip-qr-row">
+      <div class="tip-qr-item">
+        <img src="qr-alipay.png" alt="支付宝收款码" />
+      </div>
+      <div class="tip-qr-item">
+        <img src="qr-wechat.png" alt="微信收款码" />
+      </div>
+    </div>
+  </div>
+
+  <div class="saved" id="saved-msg"></div>
+
+  <script src="config.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
